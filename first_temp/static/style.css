@@ -1,0 +1,15 @@
+html {height: 100%;}
+div
+{   color: #fff;
+    font-family: 'Advent Pro';
+    font-weight: 400;
+    position: absolute;
+    text-align: left;
+}
+
+h1 {font-size: 40px;font-weight: 200; margin: 0}
+p {font-size: 30px;font-weight: 200; margin: 0}
+body {height: 100%;}
+.cold {background: linear-gradient(to bottom, #7abcff, #0665e0 );}
+.mediumhot {background: linear-gradient(to bottom, #81ef85,#057003);}
+.hot {background: linear-gradient(to bottom, #fcdb88,#d32106);}

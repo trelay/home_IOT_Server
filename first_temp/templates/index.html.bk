@@ -1,0 +1,17 @@
+<!DOCTYPE html><html><head><title>Temperature</title><meta charset="utf-8" /><meta name="viewport" content="width=device-width" /><link href='https://fonts.googleapis.com/css?family=Advent+Pro' rel="stylesheet" type="text/css">
+
+<link rel="stylesheet" type="text/css" href="{{ url_for('static', filename='style.css') }}">
+</head>
+
+<body class={{cssclass}}>
+<div>
+<h1>Temperature in:</h1>
+<p>{{temp_in}}&nbsp;<small>&deg;C</small></p>
+<h1>Ambient light:</h1>
+<p>{{light}}</p>
+<h1>Temperature out:</h1>
+<p>{{temp_out}}&nbsp;<small>&deg;C</small></p>
+
+</div>
+</body>
+</html>
