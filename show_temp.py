@@ -1,4 +1,4 @@
-#!/usr/bin/python
+#!/usr/bin/python3
 import RPi.GPIO as GPIO
 import sqlite3
 from time import time as tm
@@ -9,6 +9,28 @@ from flask import Blueprint, request, session, g, redirect, url_for, abort, \
 import logging, time
 import smbus
 import os
+import json
+import urllib.request
+
+pre="""<html>
+<head>
+<meta http-equiv="Content-Type" content="text/html; charset=gb2312">
+</head>
+<body>"""
+
+weather_format="""<p>
+<b>%(date)s</b><br><br>
+<b>%(weather)s</b><br>
+<b>%(temperature)s</b>
+<br>
+<img src="%(dayPictureUrl)s"/>
+<img src="%(nightPictureUrl)s"/>
+</p>
+<hr/>
+"""
+
+suf = """</body> </html>"""
+
 
 GPIO.setmode(GPIO.BCM)
 file_path = os.path.dirname(os.path.abspath(__file__))
@@ -66,6 +88,18 @@ def index_show():
             in_temp = in_temp, in_dt = in_dt,\
             out_temp= out_temp, out_dt = out_dt)
 
+def get_weather_json():
+    URL = 'http://api.map.baidu.com/telematics/v3/weather?location=dongguan&output=json&ak=lsTdWpHKKx2j4m1LhfDDXUgW'
+    req = urllib.request.Request(url=URL)
+    with urllib.request.urlopen(req) as f:
+        return json.loads(f.read().decode('utf-8'))
+def get_weath_html(json_dict):
+    weather = ""
+    for day in json_dict['results'][0]["weather_data"]:
+        day_report = weather_format % day
+        weather += day_report
+    return weather
+
 @app.route('/out')
 def out_show():
     time_tk = float(tm())
@@ -80,6 +114,16 @@ def in_show():
 def temp_show():
     time_tk = float(tm())
     return render_template("temp_all.html", time_tk= time_tk)
+
+@app.route('/weather')
+def weather_report():
+    json_dict = get_weather_json()
+    if json_dict['error']==0:
+        weather = get_weath_html(json_dict)
+#        return render_template("rep.html",weather=weather)
+        return pre + weather + suf
+    else:
+        return "Sorry"
 
 if __name__ == '__main__':
     log_name = os.path.join(file_path, 'flask.log')
