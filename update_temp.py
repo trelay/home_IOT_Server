@@ -103,16 +103,20 @@ def create_img(table_name):
     df = DataFrame(data,columns=['time','temp','ip'])
     df = df.replace('Start',np.NaN)
     df.index=df.time
-    del df['time']
     df['temp'] = df['temp'].astype(float,errors='ignore')
     df.index = pd.to_datetime(df.index,format=u"%Y-%m-%d %H:%M:%S.%f")
-
+    time_last =df['time'][-1]
+    last_update = datetime.datetime.strptime(time_last,'%Y-%m-%d %H:%M:%S.%f')\
+                  .strftime("%Y-%m-%d %H:%M:%S")
+    
 
     fig = plt.figure()
     ax = fig.add_subplot(1,1,1)
-    ax.set_title("host:{0}".format(df['ip'][0]))
-    df.plot(ax=ax, style='k-')
+    ax.set_title("host:{0}\n last_update:{1}".format(df['ip'][0], last_update))
+    df.plot(ax=ax, style='k--')
     fig.savefig(img_path)
+    plt.cla()
+    plt.close(fig)
     
 def on_message(client, userdata, msg):
 
