@@ -1,4 +1,4 @@
-#!/usr/bin/env python
+#!/usr/bin/env python3
 import paho.mqtt.client as mqtt
 import sqlite3
 import datetime
@@ -10,6 +10,11 @@ import matplotlib
 matplotlib.use('Agg')
 import matplotlib.pyplot as plt
 import datetime
+
+import pandas as pd
+from pandas import DataFrame
+import numpy as np
+
 
 
 GPIO.setmode(GPIO.BCM)
@@ -91,32 +96,31 @@ def create_img(table_name):
     filename = "{0}.png".format(table_name.split("_")[1])
     img_path = os.path.join(file_path, 'static', filename)
 
-    #values = read_temp('temp_out')
+    #data = read_temp('temp_out')
     
-    values = read_temp(table_name)
-    last_update = ""
-    temp_array=[]
-    for value in values:
-        try:
-            temp_array.append(float(value[1]))
-            last_update = value[0]
-        except ValueError:
-            pass
-    last_update_s = datetime.datetime.strptime(last_update, "%Y-%m-%d %H:%M:%S.%f")
-    last_update = last_update_s.strftime("%Y-%m-%d %H:%M:%S")
-    
-    plt.plot(temp_array)
-    title = "Last update: {0}".format(last_update)
-    plt.title(title)
-    plt.savefig(img_path)
-    plt.close()
+    data = read_temp(table_name)
 
+    df = DataFrame(data,columns=['time','temp','ip'])
+    df = df.replace('Start',np.NaN)
+    df.index=df.time
+    del df['time']
+    df['temp'] = df['temp'].astype(float,errors='ignore')
+    df.index = pd.to_datetime(df.index,format=u"%Y-%m-%d %H:%M:%S.%f")
+
+
+    fig = plt.figure()
+    ax = fig.add_subplot(1,1,1)
+    ax.set_title("host:{0}".format(df['ip'][0]))
+    df.plot(ax=ax, style='k-')
+    fig.savefig(img_path)
+    
 def on_message(client, userdata, msg):
 
     #insert out_sensor
-    temp_str = msg.payload.split(":")
+    msg_s = msg.payload.decode()
+    temp_str = msg_s.split(":")
     wr_out.w_record(temp_str[1], temp_str[0], 'temp_out')
-    print(msg.topic+" "+msg.payload)
+    print(msg.topic+" "+msg_s)
     wr_out.del_un('temp_out')
     create_img('temp_out')
     set_led()
