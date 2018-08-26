@@ -2,6 +2,7 @@
 import RPi.GPIO as GPIO
 import sqlite3
 from time import time as tm
+from datetime import datetime
 
 from flask import Blueprint, request, session, g, redirect, url_for, abort, \
      render_template, flash, current_app, Flask
@@ -11,14 +12,20 @@ import smbus
 import os
 import json
 import urllib.request
+import redis
 
 pre="""<html>
 <head>
 <meta http-equiv="Content-Type" content="text/html; charset=gb2312">
 </head>
+
 <body>"""
 
-weather_format="""<p>
+ico_body="""<link rel="shortcut icon" href="/static/Right.ico">"""
+
+weather_format="""
+
+<p>
 <b>%(date)s</b><br><br>
 <b>%(weather)s</b><br>
 <b>%(temperature)s</b>
@@ -30,29 +37,16 @@ weather_format="""<p>
 """
 
 suf = """</body> </html>"""
-
+redis_host = "localhost"
+redis_port = 6379
+redis_password = ""
 
 GPIO.setmode(GPIO.BCM)
 file_path = os.path.dirname(os.path.abspath(__file__))
 
 app = Flask(__name__)
-
-def get_temp(table_name):
-    db_path = os.path.join(file_path, 'Temp.db')
-    sql_str = "select * from {0} where  date_time \
-              =(select * from (select date_time from \
-              {0} order by date_time desc) limit 2)".format(table_name)
-    conn = sqlite3.connect(db_path)
-    c = conn.cursor()
-    c.execute(sql_str)
-    all=c.fetchall()[0]
-    try:
-        temp = float(all[1])
-    except ValueError:
-        temp = "NA"
-    update = str(all[0])
-    c.close()
-    return (temp,update)
+r = redis.StrictRedis(host=redis_host, port=redis_port, \
+              password=redis_password, decode_responses=True)
 
 def get_ambient(dev=0x23):
     ONE_TIME_HIGH_RES_MODE = 0x20
@@ -63,20 +57,16 @@ def get_ambient(dev=0x23):
     
     return light
 
-def set_led(gpio_led=26):
-    GPIO.setup(gpio_led, GPIO.OUT)
-    GPIO.output(gpio_led,True)
-    time.sleep(0.5)
-    GPIO.output(gpio_led,False)
-
 @app.route('/')
 def index_show():
-    in_tuple = get_temp("temp_in")
-    out_tuple = get_temp("temp_out")
-    in_temp = in_tuple[0]
-    in_dt = in_tuple[1][0:-7]
-    out_temp = out_tuple[0]
-    out_dt = out_tuple[1][0:-7]
+    try:
+        in_temp = float(r.lrange("TEMP:in",0,0)[0].split(":")[1])
+        in_dt = r.hgetall("last_update")["in"]
+        out_temp = float(r.lrange("TEMP:out",0,0)[0].split(":")[1])
+        out_dt = r.hgetall("last_update")["out"]
+    except:
+        in_temp = out_temp = 25.0
+        in_dt = out_dt =datetime.strftime(datetime.now(),"%Y-%m-%d %H:%M:%S")
 
     readlight = get_ambient()
     style = "mediumhot"
@@ -121,7 +111,7 @@ def weather_report():
     if json_dict['error']==0:
         weather = get_weath_html(json_dict)
 #        return render_template("rep.html",weather=weather)
-        return pre + weather + suf
+        return pre + ico_body +  weather + suf
     else:
         return "Sorry"
 
