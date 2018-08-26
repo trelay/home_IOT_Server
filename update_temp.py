@@ -33,8 +33,8 @@ def read_temp(table_name):
             timestamp = pd.to_datetime(float(elout[2]), unit='s')
         except:
             ip="error"
-            temp = 99,99
-            timestamp =pd.to_datetime(0.0, unit='s')
+            temp = 25
+            timestamp =pd.datetime.now()
         df.loc[i] = [ip,temp, timestamp]
         df.index = df.timestamp
         i+=1
@@ -54,10 +54,15 @@ def create_img(table_name):
     ax.set_title("host:{0}\n last_update:{1}".format(df['ip'][-1], last_update))
     del df["ip"]
     del df["timestamp"]
-    df.plot(ax=ax, style='b-')
-    fig.savefig(img_path)
-    plt.cla()
-    plt.close(fig)
+    try:
+        df.plot(ax=ax, style='b-')
+        fig.savefig(img_path)
+    except:
+        print("Error")
+        pass
+    finally:
+        plt.cla()
+        plt.close(fig)
     
 def fun_in(client):
     sleep(5)
@@ -89,6 +94,7 @@ def on_message(client, userdata, msg):
     else:
         table_name = Topic+ ":un"
 
+    global r
     r.lpush(table_name, msg_s +":"+str(time()))
     r.ltrim(table_name,0,data_len)
     last_update = datetime.strftime(datetime.now(),"%Y-%m-%d %H:%M:%S")
@@ -111,6 +117,7 @@ if __name__=="__main__":
         except:
             sleep(1)
     
+    global r
     r = redis.StrictRedis(host=redis_host, port=redis_port, \
             password=redis_password, decode_responses=True)
     procs = []
