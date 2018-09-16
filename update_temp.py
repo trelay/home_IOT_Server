@@ -17,30 +17,25 @@ class LEDThread(threading.Thread):
     def run(self):
         GPIO.setup(self.led, GPIO.OUT)
         GPIO.output(self.led,True)
-        sleep(1)
+        sleep(0.2)
         GPIO.output(self.led,False)
 
 def read_temp(table_name):
-    i=0
     df = pd.DataFrame(columns=['ip', 'temp', 'timestamp'])
     out_list = r.lrange(table_name,0,-1)
-    i =0 
-    for out in out_list:
-        elout = out.split(":")
-        try:
-            ip= elout[0]
-            temp = float(elout[1])
-            timestamp = pd.to_datetime(float(elout[2]), unit='s')
-        except:
-            ip="error"
-            temp = 25
-            timestamp =pd.datetime.now()
-        df.loc[i] = [ip,temp, timestamp]
-        df.index = df.timestamp
-        i+=1
+    tmp_list=[]
+    for ele in out_list:
+        elelist = ele.split(":")
+        elelist[1] = float(elelist[1])
+        elelist[2] = pd.to_datetime(float(elelist[2]),unit='s')
+        tmp_list.append(elelist)
+    df = pd.DataFrame(tmp_list)
+    df.columns=['ip', 'temp', 'timestamp']
+    df.index = df.timestamp
     return df
 
 def create_img(table_name):
+    print("start creating img")
     file_path = os.path.dirname(os.path.abspath(__file__))
     table_type = table_name.split(":")[1]
     filename = "{0}.png".format(table_type)
@@ -51,7 +46,7 @@ def create_img(table_name):
     
     fig = plt.figure()
     ax = fig.add_subplot(1,1,1)
-    ax.set_title("host:{0}\n last_update:{1}".format(df['ip'][-1], last_update))
+    ax.set_title("host:{0}\n last_update:{1}".format(df['ip'][0], last_update))
     del df["ip"]
     del df["timestamp"]
     try:
@@ -63,6 +58,7 @@ def create_img(table_name):
     finally:
         plt.cla()
         plt.close(fig)
+    print("finished creating img")
     
 def fun_in(client):
     sleep(5)
@@ -83,6 +79,7 @@ def on_message(client, userdata, msg):
 
     msg_s = msg.payload.decode()
     ip,temp = msg_s.split(":")
+    print("MQTT: got {0} from {1}".format(temp,ip))
     
     if ip.strip() in out_ip:
         table_type = "out"
@@ -92,10 +89,11 @@ def on_message(client, userdata, msg):
         table_type = "in"
         table_name = Topic +":"+ table_type
     else:
+        table_type = "un"
         table_name = Topic+ ":un"
 
     global r
-    r.lpush(table_name, msg_s +":"+str(time()))
+    r.lpush(table_name, msg_s +":"+str(time()+28800))
     r.ltrim(table_name,0,data_len)
     last_update = datetime.strftime(datetime.now(),"%Y-%m-%d %H:%M:%S")
     r.hset("last_update", table_type, last_update)
